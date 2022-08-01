@@ -1,83 +1,79 @@
-pipeline {
-
+pipeline{
     agent any
-/*
-	tools {
-        maven "maven3"
-    }
-*/
-    environment {
-        registry = "imranvisualpath/vproappdock"
+
+    environment{
+        registry = 'sidmanish18/vprofileapp'
         registryCredential = 'dockerhub'
+
     }
-
     stages{
-
         stage('BUILD'){
-            steps {
+            steps{
                 sh 'mvn clean install -DskipTests'
             }
-            post {
-                success {
+            post{
+                success{
                     echo 'Now Archiving...'
                     archiveArtifacts artifacts: '**/target/*.war'
                 }
             }
+
+
         }
 
         stage('UNIT TEST'){
-            steps {
+            steps{
                 sh 'mvn test'
             }
         }
 
         stage('INTEGRATION TEST'){
-            steps {
+            steps{
                 sh 'mvn verify -DskipUnitTests'
             }
         }
 
         stage ('CODE ANALYSIS WITH CHECKSTYLE'){
-            steps {
+            steps{
                 sh 'mvn checkstyle:checkstyle'
             }
-            post {
-                success {
+            post{
+                success{
                     echo 'Generated Analysis Result'
                 }
             }
         }
 
-
-        stage('Building image') {
+        stage('Build App Image'){
             steps{
-              script {
-                dockerImage = docker.build registry + ":$BUILD_NUMBER"
-              }
+                script{
+                    dockerImage=docker.build registry + ":$BUILD_NUMBER"
+                }
             }
         }
-        
-        stage('Deploy Image') {
-          steps{
-            script {
-              docker.withRegistry( '', registryCredential ) {
-                dockerImage.push("$BUILD_NUMBER")
-                dockerImage.push('latest')
-              }
+
+        stage('Load Image'){
+            steps{
+                script{
+                    docker.withRegistry('', registryCredential) {
+                        dockerImage.push("$BUILD_NUMBER")
+                        dockerImage.push('latest')
+                    }
+                }
             }
-          }
         }
 
-        stage('Remove Unused docker image') {
-          steps{
-            sh "docker rmi $registry:$BUILD_NUMBER"
-          }
+        stage('Remove unused Docker image'){
+            steps{
+                sh 'docker rmi $registry:$BUILD_NUMBER'
+            }
+            
         }
 
-        stage('CODE ANALYSIS with SONARQUBE') {
+         stage('CODE ANALYSIS with SONARQUBE') {
 
             environment {
-                scannerHome = tool 'mysonarscanner4'
+                scannerHome = tool 'sonar'
             }
 
             steps {
@@ -97,14 +93,16 @@ pipeline {
                 }
             }
         }
-        stage('Kubernetes Deploy') {
-	  agent { label 'KOPS' }
-            steps {
-                    sh "helm upgrade --install --force vproifle-stack helm/vprofilecharts --set appimage=${registry}:${BUILD_NUMBER} --namespace prod"
+
+        stage('Kubernetes Deploy'){
+            agent any
+            steps{
+                steps{
+                    sh "helm upgrade --install --force vprofile-stack helm/vprofile-stack --set appimage=${registry}:${BUILD_NUMBER} --namespace prod"
+                }
+
             }
         }
 
     }
-
-
 }
