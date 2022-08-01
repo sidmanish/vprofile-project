@@ -97,9 +97,9 @@ pipeline{
         stage('Kubernetes Deploy'){
             agent any
             steps{
-                steps{
+                
                     sh "helm upgrade --install --force vprofile-stack helm/vprofile-stack --set appimage=${registry}:${BUILD_NUMBER} --namespace prod"
-                }
+                
 
             }
         }
